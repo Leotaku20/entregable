@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#211b24">
+    <title>Verificación facial</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="rostro.css">
+</head>
+<body>
+    <header class="topbar">
+        <a class="home-link" href="verificacion.html" aria-label="Volver a verificación">
+            <img src="logo.png" alt="Volver a verificación">
+        </a>
+        <a class="back-link" href="verificacion.html" aria-label="Regresar a verificación">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M19 12H5m0 0 7 7m-7-7 7-7"/>
+            </svg>
+        </a>
+    </header>
+
+    <main class="face-check">
+        <h1>Verificación facial</h1>
+
+        <section class="comparison" aria-label="Comparación facial">
+            <article class="face-card">
+                <div class="face-frame reference-frame">
+                    <svg class="reference-portrait" viewBox="0 0 320 320" role="img" aria-label="Ilustración de referencia de un rostro">
+                        <rect width="320" height="320" rx="34" fill="#e6e6e6"/>
+                        <path d="M40 68V32q0-8 8-8h40M280 68V32q0-8-8-8h-40M40 252v36q0 8 8 8h40M280 252v36q0 8-8 8h-40" fill="none" stroke="#0797ae" stroke-linecap="round" stroke-width="9"/>
+                        <path d="M28 312c5-68 25-91 85-103l47-8 48 8c58 11 79 39 84 103" fill="#28b363"/>
+                        <path d="M130 184h60v42q-30 24-60 0z" fill="#f0a24d"/>
+                        <path d="M104 100c0-50 22-78 57-78 42 0 61 29 61 76 0 49-21 88-61 88s-57-38-57-86z" fill="#ffbe68"/>
+                        <path d="M103 125c-20-50-4-108 41-117 17-4 43-4 58 4 28 15 39 50 28 113-11-9-16-26-18-44-10 4-19 1-28-6-9 10-20 17-35 20 3-8 4-15 4-22-12 12-25 17-37 18-3 14-7 25-13 34z" fill="#743d3b"/>
+                    </svg>
+                    <span class="corner corner-top-left"></span>
+                    <span class="corner corner-top-right"></span>
+                    <span class="corner corner-bottom-left"></span>
+                    <span class="corner corner-bottom-right"></span>
+                </div>
+                <p class="caption">Rostro de referencia</p>
+            </article>
+
+            <article class="face-card">
+                <div class="face-frame camera-frame">
+                    <video id="camera-preview" autoplay muted playsinline aria-label="Vista previa de la cámara"></video>
+                    <div class="camera-placeholder" id="camera-placeholder">
+                        <span class="camera-icon" aria-hidden="true">◎</span>
+                        <p>Activa la cámara para mostrar tu rostro</p>
+                    </div>
+                    <button class="camera-button" id="camera-button" type="button">Activar cámara</button>
+                    <span class="corner corner-top-left"></span>
+                    <span class="corner corner-top-right"></span>
+                    <span class="corner corner-bottom-left"></span>
+                    <span class="corner corner-bottom-right"></span>
+                </div>
+                <div class="camera-progress">
+                    <div class="progress-heading">
+                        <span>Registro facial</span>
+                        <output id="progress-value" for="face-progress">0%</output>
+                    </div>
+                    <progress id="face-progress" max="100" value="0" aria-label="Progreso de detección del rostro">0%</progress>
+                    <p id="camera-status" role="status" aria-live="polite">Activa la cámara y mantén un solo rostro centrado.</p>
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <script>
+        const cameraButton = document.querySelector("#camera-button");
+        const cameraPreview = document.querySelector("#camera-preview");
+        const cameraPlaceholder = document.querySelector("#camera-placeholder");
+        const cameraStatus = document.querySelector("#camera-status");
+        const faceProgress = document.querySelector("#face-progress");
+        const progressValue = document.querySelector("#progress-value");
+        let cameraStream;
+        let faceDetector;
+        let detectionTimer;
+        let previousDetectionTime = 0;
+
+        function setProgress(value) {
+            const percentage = Math.round(value);
+            faceProgress.value = percentage;
+            progressValue.value = `${percentage}%`;
+            progressValue.textContent = `${percentage}%`;
+        }
+
+        function stopCamera(message = "Cámara apagada.") {
+            window.clearInterval(detectionTimer);
+            detectionTimer = undefined;
+            previousDetectionTime = 0;
+            faceDetector?.close();
+            faceDetector = undefined;
+            cameraStream?.getTracks().forEach((track) => track.stop());
+            cameraStream = undefined;
+            cameraPreview.srcObject = null;
+            cameraPlaceholder.hidden = false;
+            cameraButton.disabled = false;
+            cameraButton.textContent = "Activar cámara";
+            cameraButton.dataset.action = "start";
+            setProgress(0);
+            cameraStatus.textContent = message;
+        }
+
+        function updateFaceProgress() {
+            if (!faceDetector || !cameraPreview.videoWidth) {
+                return;
+            }
+
+            const result = faceDetector.detectForVideo(cameraPreview, performance.now());
+            const detections = result.detections;
+
+            if (detections.length !== 1) {
+                previousDetectionTime = 0;
+                cameraStatus.textContent = detections.length === 0
+                    ? "No se detecta un rostro. Colócate frente a la cámara."
+                    : "Debe aparecer una sola persona frente a la cámara.";
+                return;
+            }
+
+            const { originX, originY, width, height } = detections[0].boundingBox;
+            const centerX = (originX + width / 2) / cameraPreview.videoWidth;
+            const centerY = (originY + height / 2) / cameraPreview.videoHeight;
+            const faceWidth = width / cameraPreview.videoWidth;
+            const faceIsWellPositioned =
+                centerX >= 0.3 && centerX <= 0.7 &&
+                centerY >= 0.25 && centerY <= 0.75 &&
+                faceWidth >= 0.18 && faceWidth <= 0.7;
+
+            if (!faceIsWellPositioned) {
+                previousDetectionTime = 0;
+                cameraStatus.textContent = "Centra el rostro y ajusta tu distancia a la cámara.";
+                return;
+            }
+
+            const now = performance.now();
+            if (previousDetectionTime) {
+                const visibleFor = Math.min(now - previousDetectionTime, 250);
+                setProgress(Math.min(100, Number(faceProgress.value) + visibleFor / 80));
+            }
+            previousDetectionTime = now;
+
+            cameraStatus.textContent = Number(faceProgress.value) >= 100
+                ? "Rostro detectado correctamente. Esto no confirma la identidad."
+                : "Rostro centrado. Mantén la posición para completar el registro.";
+        }
+
+        cameraButton.addEventListener("click", async () => {
+            if (cameraStream) {
+                stopCamera();
+                return;
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                cameraStatus.textContent = "Este navegador no permite acceder a la cámara en esta página. Ábrela desde HTTPS o localhost.";
+                return;
+            }
+
+            cameraButton.disabled = true;
+            cameraStatus.textContent = "Solicitando permiso para usar la cámara...";
+
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    audio: false,
+                    video: { facingMode: "user" }
+                });
+                cameraPreview.srcObject = cameraStream;
+                await cameraPreview.play();
+                cameraPlaceholder.hidden = true;
+
+                cameraStatus.textContent = "Cargando el detector facial...";
+                const { FaceDetector, FilesetResolver } = await import(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs"
+                );
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm"
+                );
+                faceDetector = await FaceDetector.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite"
+                    },
+                    runningMode: "VIDEO",
+                    minDetectionConfidence: 0.6
+                });
+
+                cameraButton.textContent = "Detener cámara";
+                cameraButton.dataset.action = "stop";
+                cameraButton.disabled = false;
+                cameraStatus.textContent = "Centra un solo rostro dentro de las esquinas.";
+                detectionTimer = window.setInterval(updateFaceProgress, 150);
+            } catch (error) {
+                const message = error.name === "NotAllowedError"
+                    ? "No se concedió permiso para usar la cámara."
+                    : error.name === "NotFoundError"
+                        ? "No se encontró una cámara en este dispositivo."
+                        : "No se pudo iniciar la detección facial. Comprueba tu cámara y conexión a internet e inténtalo otra vez.";
+                stopCamera(message);
+            }
+        });
+
+        window.addEventListener("pagehide", () => {
+            window.clearInterval(detectionTimer);
+            faceDetector?.close();
+            cameraStream?.getTracks().forEach((track) => track.stop());
+        });
+    </script>
+</body>
+</html>
