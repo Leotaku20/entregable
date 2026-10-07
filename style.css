@@ -1,0 +1,131 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    min-height: 100svh;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: clamp(24px, 6vh, 56px) 16px;
+    background: url("fondo.jpg") center / cover no-repeat;
+    font-family: Arial, sans-serif;
+    color: #050505;
+}
+
+.login {
+    width: min(100%, 360px);
+}
+
+.welcome {
+    margin: 0 0 clamp(28px, 6vh, 42px);
+    text-align: center;
+    font-family: "Roboto Mono", "Courier New", monospace;
+    font-size: clamp(24px, 6vw, 32px);
+    font-weight: 400;
+    letter-spacing: 1px;
+}
+
+.title {
+    margin: 0 0 clamp(32px, 6vh, 44px);
+    font-family: "Archivo Black", "Arial Black", sans-serif;
+    font-size: clamp(34px, 9vw, 42px);
+    font-weight: 400;
+    line-height: 1.02;
+    letter-spacing: 0;
+    text-align: center;
+}
+
+form {
+    display: grid;
+    gap: 10px;
+}
+
+.field {
+    display: grid;
+    gap: 8px;
+}
+
+label {
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+input,
+button {
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1px solid #333;
+    border-radius: 0;
+    font: inherit;
+}
+
+button {
+    width: min(100%, 220px);
+    min-height: 48px;
+    justify-self: center;
+    margin-top: clamp(24px, 6vh, 48px);
+    background: #6441a5;
+    color: #fff;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover {
+    background: #503486;
+}
+
+button:focus-visible,
+input:focus-visible {
+    outline: 3px solid #8e6bd1;
+    outline-offset: 2px;
+}
+
+.message {
+    min-height: 1.25em;
+    margin: 0;
+    text-align: center;
+    font-size: 14px;
+}
+
+.message.success {
+    color: #176b2c;
+}
+
+.message.error {
+    color: #a32222;
+}
+
+@media (max-width: 480px) {
+    body {
+        background-position: center;
+        padding-right: 20px;
+        padding-left: 20px;
+    }
+
+    .login {
+        width: min(100%, 340px);
+    }
+}
+
+@media (max-height: 640px) {
+    body {
+        align-items: flex-start;
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+
+    .welcome {
+        margin-bottom: 20px;
+    }
+
+    .title {
+        margin-bottom: 24px;
+    }
+
+    button {
+        margin-top: 24px;
+    }
+}
